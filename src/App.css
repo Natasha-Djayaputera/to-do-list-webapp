@@ -1,38 +1,189 @@
-.App {
-  text-align: center;
+html * {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif !important;
+  user-select: none;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+.Header {
+  background-color: cadetblue;
+  height: 40px;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
+.Board {
+  width: 100vw;
+  height: calc(100vh - 40px);
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+}
+
+.color-red {
+  color: red;
+}
+
+/* TITLE: SECTION */
+.Section {
+  background-color: whitesmoke;
+  width: 25vw;
+  height: 100%;
+  max-width: 320px;
+  min-width: 200px;
+}
+
+.Section-Wrapper {
+  padding: 16px 0px 16px 8px;
+}
+
+.Section-Wrapper button {
+  background-color: whitesmoke;
+  width: 100%;
+  height: 40px;
+  padding: 10px 20px;
+  text-align: left;
+  border: 0px;
+  border-radius: 4px 0 0 4px;
+  font-weight: 700;
+}
+
+.Section-Wrapper button:hover {
+  filter: brightness(98%);
+  font-weight: 800;
+}
+.Section-Wrapper button:focus {
+  filter: brightness(96%);
+  font-weight: 800;
+}
+
+.Section-Wrapper p {
+  text-align: left;
+  padding: 10px 20px;
+  font-size: 12px;
+  font-weight: 500;
+  margin: auto;
+}
+
+/* TITLE: TASK */
+
+.Task {
+  background-color: white;
+  width: 100%;
+  height: 100%;
+}
+
+.Task h2 {
+  text-align: left;
+  padding-left: 40px;
+}
+
+.Task-Wrapper {
+  padding: 8px 8px;
+}
+
+.Task-Wrapper button {
+  background-color: white;
+  width: 100%;
+  height: 40px;
+  padding: 10px 30px;
+  text-align: left;
+  border: 0px;
+  border-radius: 4px;
+  font-weight: 600;
+  display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
 }
 
-.App-link {
-  color: #61dafb;
+.Task-Wrapper button:hover {
+  filter: brightness(98%);
+  font-weight: 700;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.Task-Wrapper button:focus {
+  filter: brightness(96%);
+  font-weight: 700;
+}
+
+.Task-Wrapper p {
+  padding-left: 4px;
+  width: 100%;
+}
+
+.Task-Wrapper label {
+  width: fit-content;
+  white-space: nowrap;
+}
+
+/* TITLE: TASKINPUT */
+
+.Task-Input {
+  max-width: 100%;
+  height: 40px;
+  border: 0px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  margin: 0px 20px;
+}
+
+.Task-Input:focus-within {
+  outline: none;
+  box-shadow: inset 0px 0px 0px 1px black;
+}
+
+.Task-Input:hover {
+  outline: none;
+  box-shadow: inset 0px 0px 0px 1px black;
+}
+
+.Task-Input input[type="text"] {
+  width: 100%;
+  height: 80%;
+  padding: 0px 10px;
+  margin: 4px;
+  border: 0px;
+  border-radius: 6px;
+}
+
+.Task-Input input:focus {
+  outline: none;
+  box-shadow: inset 0px 0px 0px 0px black;
+}
+
+.Task-Input input:hover {
+  outline: none;
+  box-shadow: inset 0px 0px 0px 0px black;
+}
+
+/* TITLE: TASKDATEINPUT */
+
+.Task-Date-Input {
+  background-color: transparent;
+  width: fit-content;
+  height: 40px;
+  border: 0px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  margin: auto;
+}
+
+.Task-Date-Input input[type="date"] {
+  background-color: transparent;
+  width: fit-content;
+  height: 80%;
+  margin: 4px;
+  border: 0px;
+}
+
+.Task-Date-Input input[type="date"]::-webkit-inner-spin-button,
+.Task-Date-Input input[type="date"]::-webkit-calendar-picker-indicator {
+  /* display: none;
+  -webkit-appearance: none; */
+  margin: 0;
+}
+
+.Task-Date-Input input[type="date"]::-webkit-datetime-edit {
+  display: none;
+}
+
+.Task-Date-Input label {
+  width: max-content;
+  background-color: transparent;
 }
