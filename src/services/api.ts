@@ -17,11 +17,16 @@ export interface SuccessResponseBody<T> {
   data: T | T[];
 }
 
+export interface FailResponseBody {
+  code: "fail";
+  error: { message: string };
+}
+
 export interface SerializableTaskListModelAttributes {
   id: number;
   task: string;
   isDone: boolean;
-  dueDate: Date | null;
+  dueDate: string | null;
   tagNames: string[] | null;
   listName: string | null;
   createdAt: string;
@@ -31,7 +36,7 @@ export interface SerializableTaskListModelAttributes {
 
 interface CreateNewTaskRequestBody {
   task: string;
-  dueDate: Date | null;
+  dueDate: string | null;
   tagNames: string[] | null;
   listName: string | null;
 }
@@ -43,7 +48,7 @@ export type NewTaskResponseData = Pick<
 
 export async function createNewTask(
   task: string,
-  dueDate: Date | null,
+  dueDate: string | null,
   tagNames: string[] | null,
   listName: string | null
 ) {
@@ -61,29 +66,13 @@ export type TaskListResponseData = Omit<
 >;
 
 export async function getTasklist() {
-  return await axios.get<SuccessResponseBody<TaskListResponseData>>(
+  return await axios.get<SuccessResponseBody<TaskListResponseData[]>>(
     `${API_BASE_URL}/tasks/all`
   );
 }
 
-export interface GetFilteredTaskListRequestBody {
-  task: string | null;
-  dueDate: Date | null;
-  startDate: Date | null;
-  endDate: Date | null;
-  tagNames: string[] | null;
-  listName: string | null;
-}
-
-export async function getFilteredTaskList(
-  task: string | null,
-  dueDate: Date | null,
-  startDate: Date | null,
-  endDate: Date | null,
-  tagNames: string[] | null,
-  listName: string | null
-) {
-  return await axios.get<SuccessResponseBody<TaskListResponseData>>(
+export async function getFilteredTaskList() {
+  return await axios.get<SuccessResponseBody<TaskListResponseData[]>>(
     `${API_BASE_URL}/filters`
   );
 }
