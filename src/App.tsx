@@ -1,106 +1,117 @@
+import moment from "moment";
 import React, { useState } from "react";
 import "./App.css";
+import { ReactComponent as ListLogo } from "./assets/list.svg";
+import { ReactComponent as TagsLogo } from "./assets/tags.svg";
 import { relativeDueDateHandler } from "./handlers/relative-due-date";
-import moment from "moment";
 import {
   createNewTask,
   FailResponseBody,
+  getAllList,
+  getAllTags,
   getTasklist,
   isAxiosError,
-  NewTaskResponseData,
-  SuccessResponseBody,
+  modifyTask,
 } from "./services/api";
 
 const INIT_TASKLIST = {
-  id: 0,
+  id: -1,
   task: ``,
   isDone: false,
-  dueDate: moment(),
+  dueDate: undefined,
   tagNames: [],
   listName: ``,
 };
 
 const INIT_NEW_TASK = "";
 
-const INIT_DUE_DATE = moment();
+const INIT_DUE_DATE = undefined;
 
 const INIT_RELATIVE_DUE_DATE = {
-  date: "Today",
+  date: undefined,
   isDue: false,
 };
+
+const TAGS_REGEX = /#\w+/g;
+
+const LIST_REGEX = /@\w+/g;
 
 export interface Tasklist {
   id: number;
   task: string;
   isDone: boolean;
-  dueDate: moment.Moment;
+  dueDate?: moment.Moment;
   tagNames: string[];
   listName: string;
 }
 
+export type PageIdentifier = "Page" | "Tags" | "List";
+export type Page = [PageIdentifier, string];
+
 const App: React.VFC = () => {
-  const [idCount, setIdCount] = useState(0);
+  const [page, setPage] = useState<Page>(["Page", "Today"]);
   const [taskList, setTaskList] = useState<Tasklist[]>([]);
+  const [tags, setTags] = useState<string[] | null>(null);
+  const [list, setList] = useState<string[] | null>(null);
   const [newTask, setNewTask] = useState(INIT_NEW_TASK);
-  const [dueDate, setDueDate] = useState(INIT_DUE_DATE);
+  const [dueDate, setDueDate] = useState<moment.Moment | undefined>(undefined);
   const [relativeDueDate, setRelativeDueDate] = useState<{
-    date: string;
+    date?: string;
     isDue: boolean;
   }>({ ...INIT_RELATIVE_DUE_DATE });
-  const [isFocus, setIsFocus] = useState(false);
-  const [apiError, setApiError] = useState<Error>();
-  const [apiResponse, setApiResponse] =
-    useState<SuccessResponseBody<NewTaskResponseData>>();
+  const [isPopulated, setIsPopulated] = useState(false);
+  const [isDueDateUpdated, setIsDueDateUpdated] = useState(false);
 
-  const checkedInputHandle = (taskListID: number) => {
-    taskList[taskListID - 1].isDone = !taskList[taskListID - 1].isDone;
-    setTaskList([...taskList]);
-  };
-
-  // const addTask = () => {
-  //   if (newTask === "") {
-  //     return;
-  //   }
-  //   setIdCount(idCount + 1);
-  //   const newTaskList: Tasklist = { ...INIT_TASKLIST };
-  //   newTaskList.task = newTask;
-  //   newTaskList.id = idCount;
-  //   newTaskList.dueDate = dueDate;
-  //   setTaskList(taskList.concat(newTaskList));
-  // };
   const addTask = async () => {
-    if (newTask === "") {
-      return;
+    if (newTask === "") return;
+    let currentTask: Tasklist = { ...INIT_TASKLIST };
+    if (newTask !== undefined) {
+      if (newTask.includes("#")) {
+        const tags = newTask.match(TAGS_REGEX);
+        if (tags !== null) {
+          currentTask.tagNames = tags.map((tag) => {
+            return tag.substring(1);
+          });
+        }
+      }
+      if (newTask.includes("@")) {
+        const list = newTask.match(LIST_REGEX);
+        if (list !== null) {
+          currentTask.listName = list.slice(0, 1).toString().substring(1);
+        }
+      }
+      currentTask.task = newTask
+        .replace(TAGS_REGEX, "")
+        .replace(LIST_REGEX, "")
+        .trim();
     }
-    setIdCount(idCount + 1);
-    const newTaskList: Tasklist = { ...INIT_TASKLIST };
-    newTaskList.task = newTask;
-    newTaskList.id = idCount;
-    newTaskList.dueDate = dueDate;
-    setTaskList(taskList.concat(newTaskList));
-    try {
-      const response = await createNewTask(
-        newTask,
-        moment(dueDate).format("YYYY MM D"),
-        null,
-        null
-      );
+    currentTask.dueDate = dueDate;
 
-      setApiResponse(response.data);
-      setApiError(undefined);
+    if (page[0] === "Tags") currentTask.tagNames.push(page[1]);
+
+    try {
+      const response = await createNewTask(currentTask);
+      setIsPopulated(false);
       console.log(response.data);
     } catch (e) {
-      setApiResponse(undefined);
       if (isAxiosError<FailResponseBody>(e)) {
-        const errorMessage = e.response?.data.error.message;
-
-        if (errorMessage === "invalid-new-task") {
-          setApiError(new Error(`No task added`));
+        const errorCode = e.response?.status;
+        if (errorCode === 400) {
+          console.log("No Task Added");
           return;
         }
       }
-      setApiError(new Error("Unhandled exception, please try again later"));
+      console.log("Unhandled exception, please try again later");
     }
+  };
+
+  const checkedInputHandle = (currentTaskList: Tasklist) => {
+    const modifiedTaskList = {
+      ...currentTaskList,
+      isDone: !currentTaskList.isDone,
+    };
+    modifyTask(modifiedTaskList);
+    setIsPopulated(false);
   };
 
   const isEnter = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -110,13 +121,34 @@ const App: React.VFC = () => {
       setNewTask(INIT_NEW_TASK);
       setRelativeDueDate({ ...INIT_RELATIVE_DUE_DATE });
       setDueDate(INIT_DUE_DATE);
+      setIsDueDateUpdated(false);
     }
   };
 
   const populateTaskList = async () => {
     try {
       const response = await getTasklist();
-      console.log(response);
+      // console.log(response);
+      setTaskList(response);
+    } catch (e) {
+      console.log(e);
+    }
+  };
+
+  const populateTags = async () => {
+    try {
+      const tags = await getAllTags();
+      // console.log(tags);
+      setTags(tags);
+    } catch (e) {
+      console.log(e);
+    }
+  };
+  const populateList = async () => {
+    try {
+      const list = await getAllList();
+      // console.log(list);
+      setList(list);
     } catch (e) {
       console.log(e);
     }
@@ -124,28 +156,124 @@ const App: React.VFC = () => {
 
   const mapTask = taskList
     .slice(0, taskList.length)
-    .filter((task) => !task.isDone)
+    .filter((task) => {
+      if (page[0] === "Page") {
+        if (page[1] === "Today") {
+          return (
+            !task.isDone &&
+            task.dueDate !== undefined &&
+            task.dueDate <= moment() &&
+            task.listName === ""
+          );
+        } else if (page[1] === "Next 7 Days") {
+          return (
+            !task.isDone &&
+            task.dueDate !== undefined &&
+            task.dueDate <= moment().add(7, "d") &&
+            task.listName === ""
+          );
+        } else if (page[1] === "Inbox") {
+          return !task.isDone && task.listName === "";
+        } else if (page[1] === "Completed") {
+          return task.isDone;
+        }
+      }
+      if (page[0] === "List" && list !== null && list.includes(page[1])) {
+        return !task.isDone && task.listName.includes(page[1]);
+      }
+      if (page[0] === "Tags" && tags !== null && tags.includes(page[1])) {
+        return !task.isDone && task.tagNames.includes(page[1]);
+      }
+      return !task.isDone && task.listName === "";
+    })
     .map((task) => {
       let currentTaskList = task;
-      let currentDueDate = relativeDueDateHandler(currentTaskList.dueDate);
+      let currentDueDate =
+        currentTaskList.dueDate === undefined
+          ? undefined
+          : relativeDueDateHandler(currentTaskList.dueDate);
+      let tags;
+      if (currentTaskList.tagNames.length > 0) {
+        tags = currentTaskList.tagNames.map((tag) => {
+          return (
+            <button id={tag} key={tag}>
+              {tag}
+            </button>
+          );
+        });
+      }
       return (
         <button id={`${currentTaskList.id}`} key={`${currentTaskList.id}`}>
           <input
             id={`${currentTaskList.id}`}
             type="checkbox"
+            checked={currentTaskList.isDone}
             onChange={() => {
-              checkedInputHandle(currentTaskList.id);
+              checkedInputHandle(currentTaskList);
             }}
           ></input>
           <p>{currentTaskList.task}</p>
-          <label className={`${currentDueDate.isDue ? "color-red" : ""}`}>
-            {currentDueDate.date}
-          </label>
+          <div className="Tags">{tags}</div>
+
+          {currentDueDate !== undefined && (
+            <label className={`${currentDueDate.isDue ? "color-red" : ""}`}>
+              {currentDueDate.date}
+            </label>
+          )}
         </button>
       );
     });
 
-  populateTaskList();
+  const mapTags = tags?.map((tag) => {
+    return (
+      <button
+        id={tag}
+        key={tag}
+        onClick={() => {
+          setPage(["Tags", tag]);
+          setIsDueDateUpdated(false);
+        }}
+      >
+        <TagsLogo className="custom-icon" />
+        {tag}
+      </button>
+    );
+  });
+
+  const mapList = list?.map((list) => {
+    return (
+      <button
+        id={list}
+        key={list}
+        onClick={() => {
+          setPage(["List", list]);
+          setIsDueDateUpdated(false);
+        }}
+      >
+        <ListLogo className="custom-icon" />
+        {list}
+      </button>
+    );
+  });
+
+  if (isPopulated === false) {
+    populateTaskList();
+    populateTags();
+    populateList();
+    setIsPopulated(true);
+  }
+
+  if (isDueDateUpdated === false) {
+    if (page[1] === "Today" || page[1] === "Next 7 Days") {
+      setDueDate(moment());
+      setRelativeDueDate({ ...relativeDueDate, date: "Today" });
+      setIsDueDateUpdated(true);
+    } else if (page[1] === "Inbox") {
+      setDueDate(undefined);
+      setRelativeDueDate({ ...relativeDueDate, date: undefined });
+      setIsDueDateUpdated(true);
+    }
+  }
 
   return (
     <div className="App">
@@ -153,31 +281,58 @@ const App: React.VFC = () => {
       <div className="Board">
         <div className="Section">
           <div className="Section-Wrapper">
-            <button>Today</button>
-            <button>Next 7 Days</button>
-            <button>Inbox</button>
-            <p>Lists</p>
-            <p>Tags</p>
-            <p>Filters</p>
-            <button>Completed</button>
-          </div>
-        </div>
-        <div className="Task">
-          <h2>Today</h2>
-          <div className="Task-Wrapper">
-            <div
-              className="Task-Input"
-              onFocus={() => {
-                setIsFocus(true);
-              }}
-              onBlur={() => {
-                setIsFocus(false);
+            <button
+              id={"Today"}
+              onClick={() => {
+                setPage(["Page", "Today"]);
+                setIsDueDateUpdated(false);
               }}
             >
+              Today
+            </button>
+            <button
+              id={"Next 7 Days"}
+              onClick={() => {
+                setPage(["Page", "Next 7 Days"]);
+                setIsDueDateUpdated(false);
+              }}
+            >
+              Next 7 Days
+            </button>
+            <button
+              id={"Inbox"}
+              onClick={() => {
+                setPage(["Page", "Indox"]);
+                setIsDueDateUpdated(false);
+              }}
+            >
+              Inbox
+            </button>
+            <p>Lists</p>
+            <div className="Nested">{mapList}</div>
+            <p>Tags</p>
+            <div className="Nested">{mapTags}</div>
+            <p>Filters</p>
+            <button
+              id={"Completed"}
+              onClick={() => {
+                setPage(["Page", "Completed"]);
+                setIsDueDateUpdated(false);
+              }}
+            >
+              Completed
+            </button>
+          </div>
+        </div>
+
+        <div className="Task">
+          <h2>{page[1]}</h2>
+          {page[1] !== "Completed" && (
+            <div className="Task-Input">
               <input
                 id="taskinput"
                 type="text"
-                placeholder='+ Add task to "Today", press Enter to save.'
+                placeholder={`+ Add task to "${page[1]}", press Enter to save. Use "#" for tag and "@" for list.`}
                 autoComplete="off"
                 onKeyDown={(e) => {
                   isEnter(e);
@@ -186,7 +341,7 @@ const App: React.VFC = () => {
                   setNewTask(e.currentTarget.value);
                 }}
               ></input>
-              {(isFocus || newTask) && (
+              {newTask && (
                 <div className="Task-Date-Input">
                   <label
                     className={`${relativeDueDate.isDue ? "color-red" : ""}`}
@@ -208,8 +363,12 @@ const App: React.VFC = () => {
                 </div>
               )}
             </div>
-            {apiResponse !== undefined && <label>{apiResponse.data}</label>}
-            {apiError instanceof Error && <label>{apiError.message}</label>}
+          )}
+          <div
+            className={`Task-Wrapper ${
+              page[1] === "Completed" ? "Completed" : ""
+            }`}
+          >
             {mapTask}
           </div>
         </div>
